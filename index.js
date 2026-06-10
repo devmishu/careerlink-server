@@ -4,7 +4,7 @@ dns.setServers(["1.1.1.1", "8.8.8.8"]);
 const express = require('express');
 const dotenv = require('dotenv')
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
 // config 
@@ -38,10 +38,33 @@ async function run() {
     const db = client.db('careerlink');
     const jobs = db.collection('jobs');
     const companis = db.collection('companis');
+    const users = db.collection('user');
 
     try {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
+
+        app.get('/api/users', async (req, res) => {
+
+            try {
+
+                const cursor = users.find();
+                const result = await cursor.toArray();
+
+                res.status(200).send({
+                    success: true,
+                    message: 'users get successfully',
+                    data: result
+                })
+            } catch (error) {
+                console.log(error);
+                res.status(500).send({
+                    success: false,
+                    message: 'Failed get  users ',
+                    error: error.message
+                })
+            }
+        })
 
         app.post('/api/jobs', async (req, res) => {
             try {
@@ -91,6 +114,31 @@ async function run() {
             }
         })
 
+        app.get('/api/jobs/:id', async (req, res) => {
+
+            try {
+                const { id } = req.params;
+                const query = {
+                    _id: new ObjectId(id)
+                }
+
+                const result = await jobs.findOne(query);
+
+                res.status(200).send({
+                    success: true,
+                    message: 'jobdeatail get successfully',
+                    data: result
+                })
+            } catch (error) {
+                console.log(error);
+                res.status(500).send({
+                    success: false,
+                    message: 'Failed get  job ',
+                    error: error.message
+                })
+            }
+        })
+
         // company related api 
 
         app.get('/api/companis', async (req, res) => {
@@ -101,8 +149,7 @@ async function run() {
                     query.requeterId = req.query.requeterId;
                 }
 
-                const cursor = companis.find(query);
-                const result = await cursor.toArray();
+                const result = await companis.findOne(query);
 
                 res.status(200).send({
                     success: true,
