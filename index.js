@@ -39,6 +39,7 @@ async function run() {
     const jobs = db.collection('jobs');
     const companis = db.collection('companis');
     const users = db.collection('user');
+    const applications = db.collection('applications');
 
     try {
         // Connect the client to the server	(optional starting in v4.7)
@@ -138,6 +139,36 @@ async function run() {
                 })
             }
         })
+
+
+        // application related api 
+
+        app.post('/api/applications', (req, res) => {
+            try {
+                const application = req.body;
+                const newApplication = {
+                    ...application,
+                    createdAt: new Date() 
+                };
+
+                res.status(200).send({
+                    success: true,
+                    message: 'Application added successfully',
+                    data: newApplication 
+                });
+            } catch (error) {
+                console.error(error); 
+                res.status(500).send({
+                    success: false,
+                    message: 'Failed to add application', 
+                    error: error.message
+                });
+            }
+        });
+
+
+
+
 
         // company related api 
 
