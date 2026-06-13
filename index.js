@@ -143,24 +143,53 @@ async function run() {
 
         // application related api 
 
-        app.post('/api/applications', (req, res) => {
+        app.get('/api/applications', async (req, res) => {
+            try {
+                const query = {};
+                if (req.query.applicantId) {
+                    query.applicantId = req.query.applicantId;
+                }
+
+                const cursor = applications.find(query)
+                const result = await cursor.toArray();
+
+                res.status(200).send({
+                    success: true,
+                    message: 'application get successfully',
+                    data: result
+                })
+            } catch (error) {
+                console.log(error);
+                res.status(500).send({
+                    success: false,
+                    message: 'Failed get  applications ',
+                    error: error.message
+                })
+            }
+        });
+
+
+
+        app.post('/api/applications', async (req, res) => {
             try {
                 const application = req.body;
                 const newApplication = {
                     ...application,
-                    createdAt: new Date() 
+                    createdAt: new Date()
                 };
+
+                const result = await applications.insertOne(newApplication)
 
                 res.status(200).send({
                     success: true,
                     message: 'Application added successfully',
-                    data: newApplication 
+                    data: result
                 });
             } catch (error) {
-                console.error(error); 
+                console.error(error);
                 res.status(500).send({
                     success: false,
-                    message: 'Failed to add application', 
+                    message: 'Failed to add application',
                     error: error.message
                 });
             }
