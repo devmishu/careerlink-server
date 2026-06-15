@@ -40,6 +40,8 @@ async function run() {
     const companis = db.collection('companis');
     const users = db.collection('user');
     const applications = db.collection('applications');
+    const plans = db.collection('plans');
+    const subscriptions = db.collection('subscriptions');
 
     try {
         // Connect the client to the server	(optional starting in v4.7)
@@ -168,6 +170,119 @@ async function run() {
             }
         });
 
+        app.get('/api/plans', async (req, res) => {
+            try {
+                const query = {};
+                if (req.query.planId) {
+                    query.planId = req.query.planId;
+                }
+
+                const result = await plans.findOne(query)
+
+                res.status(200).send({
+                    success: true,
+                    message: 'plan get successfully',
+                    data: result
+                })
+            } catch (error) {
+                console.log(error);
+                res.status(500).send({
+                    success: false,
+                    message: 'Failed get plan ',
+                    error: error.message
+                })
+            }
+        })
+
+        // subscription related api 
+        // app.post('/api/subscriptions', async (req, res) => {
+        //     try {
+        //         const data = req.body;
+        //         const subInfo = {
+        //             ...data,
+        //             createdAt: new Date()
+        //         }
+        //         const result = await subscriptions.insertOne(subInfo);
+
+        //         res.status(200).send({
+        //             success: true,
+        //             message: 'subricstions create successfully',
+        //             data: result
+        //         });
+        //     } catch (error) {
+        //         console.log(error);
+        //         res.status(500).send({
+        //             success: false,
+        //             message: 'Failed create subricstions ',
+        //             error: error.message
+        //         })
+        //     }
+
+        //     // update user plan
+        //     try {
+        //         const filter = { email: data.email };
+
+        //         const updateDocument = {
+        //             $set: {
+        //                 plan: data.planId,
+        //             },
+        //         }
+        //         const userResult = await users.updateOne(filter, updateDocument);
+
+        //         res.status(200).send({
+        //             success: true,
+        //             message: 'update plan successfully',
+        //             data: userResult
+        //         });
+        //     } catch (error) {
+        //         console.log(error);
+        //         res.status(500).send({
+        //             success: false,
+        //             message: 'Failed update plan',
+        //             error: error.message
+        //         })
+        //     }
+
+        // })
+
+        app.post('/api/subscriptions', async (req, res) => {
+            try {
+                const data = req.body; // এখন এই 'data' পুরো try ব্লকের যেকোনো জায়গায় ব্যবহার করা যাবে
+
+                // ১. সাবস্ক্রিপশন ডাটা তৈরি এবং ডাটাবেজে ইনসার্ট
+                const subInfo = {
+                    ...data,
+                    createdAt: new Date()
+                };
+                const subscriptionResult = await subscriptions.insertOne(subInfo);
+
+                // ২. ইউজারের প্ল্যান আপডেট করা
+                const filter = { email: data.email };
+                const updateDocument = {
+                    $set: {
+                        plan: data.planId, // আপনার রিকোয়েস্ট বডিতে planId থাকতে হবে
+                    },
+                };
+                const userResult = await users.updateOne(filter, updateDocument);
+
+                // ৩. সব কাজ সফলভাবে শেষ হলে একটিমাত্র রেসপন্স পাঠানো হবে
+                res.status(200).send({
+                    success: true,
+                    message: 'Subscription created and user plan updated successfully',
+                    subscriptionData: subscriptionResult,
+                    userData: userResult
+                });
+
+            } catch (error) {
+                // যেকোনো একটি অপারেশনে ভুল হলে বা এরর আসলে সরাসরি এখানে চলে আসবে
+                console.error("Error in subscription process:", error);
+                res.status(500).send({
+                    success: false,
+                    message: 'Failed to complete subscription process',
+                    error: error.message
+                });
+            }
+        });
 
 
         app.post('/api/applications', async (req, res) => {
