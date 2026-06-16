@@ -316,7 +316,7 @@ async function run() {
 
         // company related api 
 
-        app.get('/api/companis', async (req, res) => {
+        app.get('/api/my/companis', async (req, res) => {
 
             try {
                 const query = {};
@@ -336,6 +336,26 @@ async function run() {
                 res.status(500).send({
                     success: false,
                     message: 'Failed get  job ',
+                    error: error.message
+                })
+            }
+        });
+
+        app.get('/api/companies', async (req, res) => {
+
+            try {
+                const result = await companis.find().toArray();
+
+                res.status(200).send({
+                    success: true,
+                    message: 'Companis get successfully',
+                    data: result
+                })
+            } catch (error) {
+                console.log(error);
+                res.status(500).send({
+                    success: false,
+                    message: 'Failed get  Companis ',
                     error: error.message
                 })
             }
