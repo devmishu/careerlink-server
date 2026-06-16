@@ -344,12 +344,22 @@ async function run() {
         app.get('/api/companies', async (req, res) => {
 
             try {
-                const result = await companis.find().toArray();
+                const companies = await companis.find().toArray();
+
+                for (const company of companies) {
+                    const filter = {
+                        companyID: company._id.toString()
+                    }
+
+                    const jobCount = await jobs.countDocuments(filter);
+                    company.applications = jobCount;
+                }
+
 
                 res.status(200).send({
                     success: true,
                     message: 'Companis get successfully',
-                    data: result
+                    data: companies
                 })
             } catch (error) {
                 console.log(error);
@@ -360,6 +370,18 @@ async function run() {
                 })
             }
         });
+        app.get('/api/companies2', async (req, res) => {
+
+            const pipeline = [
+                {
+                    $skip: 1
+                }
+            ]
+            const cursor = companis.aggregate(pipeline);
+            const result = await cursor.toArray();
+            res.send(result)
+        });
+
 
         app.post('/api/companis', async (req, res) => {
             try {
@@ -380,6 +402,34 @@ async function run() {
                 })
             }
         });
+
+        app.patch('/api/companis/:id', async (req, res) => {
+            try {
+                const companyData = req.body;
+                const id = req.params.id;
+
+                const filter = { _id: new ObjectId(id) };
+                const updateDocument = {
+                    $set: {
+                        status: companyData.status,
+                    },
+                };
+                const updatedDoc = await companis.updateOne(filter, updateDocument);
+                res.status(200).send({
+                    success: true,
+                    message: ' Status updated successfully',
+                    subscriptionData: subscriptionResult,
+                    userData: updatedDoc
+                });
+
+            } catch (error) {
+                res.status(500).send({
+                    success: false,
+                    message: 'Failed to update status',
+                    error: error.message
+                });
+            }
+        })
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
