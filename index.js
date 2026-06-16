@@ -19,12 +19,6 @@ app.use(cors());
 app.use(express.json());
 
 
-
-
-
-
-
-
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
     serverApi: {
@@ -34,6 +28,10 @@ const client = new MongoClient(uri, {
     }
 });
 
+
+
+
+
 async function run() {
     const db = client.db('careerlink');
     const jobs = db.collection('jobs');
@@ -42,6 +40,64 @@ async function run() {
     const applications = db.collection('applications');
     const plans = db.collection('plans');
     const subscriptions = db.collection('subscriptions');
+    const sessions = db.collection('session');
+
+
+    const verifyToken = async (req, res, next) => {
+        console.log('header.........', req.headers);
+        const header = req.headers.authorization
+        if (!header) {
+            return res.status(401).send({
+                message: "Unauthorize acsess"
+            })
+        }
+
+        const token = header.split(' ')[1];
+
+        if (!token) {
+            return res.status(401).send({
+                message: "Unauthorize acsess"
+            })
+        }
+
+        const query = { token: token }
+        const session = await sessions.findOne(query);
+
+        console.log("session of sessssssss----", session);
+        const userId = session?.userId;
+
+        const userQuary = {
+            _id: userId
+        }
+        const user = await users.findOne(userQuary);
+
+        console.log("user of sessssssss----", user);
+
+
+        req.user = user;
+
+        next();
+    }
+
+    const verifySeeker = (req, res, next) => {
+        if (req.user?.role !== "seeker") {
+            return res.status(403).send({ message: "Forbidden accsess" });
+        }
+        next();
+    }
+    const verifyRequeter = (req, res, next) => {
+        if (req.user?.role !== "requeter") {
+            return res.status(403).send({ message: "Forbidden accsess" });
+        }
+        next();
+    }
+
+    const verifyAdmin = (req, res, next) => {
+        if (req.user?.role !== "admin") {
+            return res.status(403).send({ message: "Forbidden accsess" });
+        }
+        next();
+    }
 
     try {
         // Connect the client to the server	(optional starting in v4.7)
@@ -145,13 +201,17 @@ async function run() {
 
         // application related api 
 
-        app.get('/api/applications', async (req, res) => {
+        app.get('/api/applications', verifyToken, verifySeeker, async (req, res) => {
             try {
                 const query = {};
                 if (req.query.applicantId) {
                     query.applicantId = req.query.applicantId;
                 }
 
+                if (req.user._id.toString() !== query.applicantId) {
+                    return res.status(403).send({ message: "Forbidden accsess" });
+                }
+                
                 const cursor = applications.find(query)
                 const result = await cursor.toArray();
 
@@ -316,7 +376,7 @@ async function run() {
 
         // company related api 
 
-        app.get('/api/my/companis', async (req, res) => {
+        app.get('/api/my/companis', verifyToken, verifyRequeter, async (req, res) => {
 
             try {
                 const query = {};
@@ -341,7 +401,7 @@ async function run() {
             }
         });
 
-        app.get('/api/companies', async (req, res) => {
+        app.get('/api/companies', verifyToken, async (req, res) => {
 
             try {
                 const companies = await companis.find().toArray();
@@ -403,7 +463,7 @@ async function run() {
             }
         });
 
-        app.patch('/api/companis/:id', async (req, res) => {
+        app.patch('/api/companis/:id', verifyToken, verifyAdmin, async (req, res) => {
             try {
                 const companyData = req.body;
                 const id = req.params.id;
@@ -429,7 +489,7 @@ async function run() {
                     error: error.message
                 });
             }
-        })
+        }) 
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
