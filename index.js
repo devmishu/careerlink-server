@@ -145,33 +145,131 @@ async function run() {
             }
         });
 
-        app.get('/api/jobs', async (req, res) => {
+        // app.get('/api/jobs', async (req, res) => {
 
+        //     try {
+        //         const query = {};
+        //         console.log('server search quary.........', req.query);
+
+        //         if (req.query.jobType) {
+        //             query.jobType = req.query.jobType
+        //         }
+        //         if (req.query.jobLocation) {
+        //             query.jobLocation = req.query.jobLocation
+        //         }
+        //         if (req.query.search) {
+        //             query.$or = [
+        //                 { jobTitle: { $regex: req.query.search, $options: 'i' } },
+        //                 { companyName: { $regex: req.query.search, $options: 'i' } },
+        //                 { currency: { $regex: req.query.search, $options: 'i' } },
+        //                 { responsibilities: { $regex: req.query.search, $options: 'i' } },
+        //                 { status: { $regex: req.query.search, $options: 'i' } },
+        //             ]
+        //         }
+
+        //         // pagination related 
+        //         if (req.query.page) {
+        //             const page = req.query.page;
+        //             const itemsPerPage = req.query.itemsPerPage || 3;
+        //             const skipItem = (page - 1) * itemsPerPage;
+
+        //             const cursor = jobs.find(query).skip(skipItem).limit(itemsPerPage)
+        //             const jobs = await cursor.toArray();
+        //             return res.send(jobs);
+        //         }
+
+        //         if (req.query.companyID) {
+        //             query.companyID = req.query.companyID;
+        //         }
+        //         if (req.query.status) {
+        //             query.status = req.query.status;
+        //         }
+        //         const cursor = jobs.find(query)
+        //         const result = await cursor.toArray();
+
+        //         res.status(200).send({
+        //             success: true,
+        //             message: 'job get successfully',
+        //             data: result
+        //         })
+        //     } catch (error) {
+        //         console.log(error);
+        //         res.status(500).send({
+        //             success: false,
+        //             message: 'Failed get  job ',
+        //             error: error.message
+        //         })
+        //     }
+        // })
+
+        app.get('/api/jobs', async (req, res) => {
             try {
                 const query = {};
+                console.log('server search query.........', req.query);
+
+                // ১. সাধারণ ফিল্টারসমূহ
+                if (req.query.jobType) {
+                    query.jobType = req.query.jobType;
+                }
+                if (req.query.jobLocation) {
+                    query.jobLocation = req.query.jobLocation;
+                }
                 if (req.query.companyID) {
                     query.companyID = req.query.companyID;
                 }
                 if (req.query.status) {
                     query.status = req.query.status;
                 }
-                const cursor = jobs.find(query)
-                const result = await cursor.toArray();
 
+                // ২. সার্চ কুয়েরি লজিক
+                if (req.query.search) {
+                    query.$or = [
+                        { jobTitle: { $regex: req.query.search, $options: 'i' } },
+                        { companyName: { $regex: req.query.search, $options: 'i' } },
+                        { currency: { $regex: req.query.search, $options: 'i' } },
+                        { responsibilities: { $regex: req.query.search, $options: 'i' } },
+                        { status: { $regex: req.query.search, $options: 'i' } },
+                    ]
+                }
+
+                // ৩. পেজিনেশন ফাংশন বা লজিক (যা আপনি রাখতে চেয়েছেন)
+                // ইউআরএল-এ যদি page কোয়েরি থাকে, তবে পেজিনেশন হবে। না থাকলে সব ডেটা একসাথে আসবে।
+                let result;
+                let total
+
+                if (req.query.page) {
+                    const pageNum = parseInt(req.query.page) || 1;
+                    const itemsPerPage = parseInt(req.query.itemsPerPage) || 9;
+                    const skipItem = (pageNum - 1) * itemsPerPage;
+
+                    // এখানে কালেকশনের নাম 'jobs' এবং ভেরিয়েবলের নাম 'dbJobs' আলাদা করা হয়েছে এরর এড়াতে
+                    total = await jobs.countDocuments(query)
+                    const cursor = jobs.find(query).skip(skipItem).limit(itemsPerPage);
+                    result = await cursor.toArray();
+                } else {
+                    // URL-এ page না থাকলে সরাসরি সব ফিল্টারড ডেটা চলে আসবে
+                    const cursor = jobs.find(query);
+                    result = await cursor.toArray();
+                }
+
+                // ৪. ফাইনাল একটি সিঙ্গেল রেসপন্স
                 res.status(200).send({
                     success: true,
                     message: 'job get successfully',
-                    data: result
-                })
+                    data: { total, result }
+                });
+
             } catch (error) {
                 console.log(error);
                 res.status(500).send({
                     success: false,
-                    message: 'Failed get  job ',
+                    message: 'Failed get job',
                     error: error.message
-                })
+                });
             }
-        })
+        });
+
+
 
         app.get('/api/jobs/:id', async (req, res) => {
 
@@ -211,7 +309,7 @@ async function run() {
                 if (req.user._id.toString() !== query.applicantId) {
                     return res.status(403).send({ message: "Forbidden accsess" });
                 }
-                
+
                 const cursor = applications.find(query)
                 const result = await cursor.toArray();
 
@@ -489,7 +587,7 @@ async function run() {
                     error: error.message
                 });
             }
-        }) 
+        })
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
